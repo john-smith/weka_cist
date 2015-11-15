@@ -1,6 +1,7 @@
 package com.neetomo.weka;
 
 import weka.classifiers.Classifier;
+import weka.classifiers.Evaluation;
 import weka.classifiers.functions.Logistic;
 import weka.core.DenseInstance;
 import weka.core.Instance;
@@ -14,6 +15,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Random;
 
 /**
  * 今回用意した、titanicデータを予測するやつ
@@ -81,12 +83,14 @@ public class Titanic {
         Instances instances = source.getDataSet();
         instances.setClassIndex(3);
 
+        System.out.println("-------------------------------");
         for (Instance instance : instances) {
             System.out.print(instance);
             System.out.print(" : ");
             System.out.println(this.classifier.classifyInstance(instance));
 
         }
+        System.out.println("-------------------------------");
     }
 
     /**
@@ -118,19 +122,56 @@ public class Titanic {
         instance.setValue(attrSex, sex);
         instance.setDataset(instances);
 
+        System.out.println("-------------------------------");
         System.out.print(instance);
         System.out.print(" : ");
         System.out.println(classifier.classifyInstance(instance));
+        System.out.println("-------------------------------");
+    }
+
+    /**
+     * Cross Validation
+     *
+     * @param data
+     * @param size
+     * @param seed
+     * @throws Exception
+     */
+    public void crossValidation(String data, int size, int seed) throws Exception {
+        DataSource source = new DataSource(data);
+        Instances instances = source.getDataSet();
+        instances.setClassIndex(3);
+
+        Classifier classifier = new Logistic();
+        classifier.buildClassifier(instances);
+
+        Evaluation eval = new Evaluation(instances);
+        eval.crossValidateModel(classifier, instances, size, new Random(seed));
+        System.out.println("-------------------------------");
+        System.out.println("Accuracy: " + eval.pctCorrect());
+        System.out.println("-------------------------------");
+        System.out.println("Confusion Matrix");
+        System.out.println((int)eval.numTruePositives(0) + "\t" + (int)eval.numFalseNegatives(0));
+        System.out.println((int)eval.numFalsePositives(0) + "\t" + (int)eval.numTrueNegatives(0));
+        System.out.println("-------------------------------");
     }
 
     public static void main(String[] args) throws Exception {
         Titanic titanic = new Titanic();
 
-        //titanic.train("data/titanic.train.arff");
+        // 学習
+        titanic.train("data/titanic.train.arff");
 
-        //titanic.save("model/titanic.model");
+        // Cross Validation
+        titanic.crossValidation("data/titanic.train.arff", 10, 1);
+
+        // モデルの保存
+        titanic.save("model/titanic.model");
+
+        // モデルの読み込み
         titanic.loadMode("model/titanic.model");
 
+        // 予測
         titanic.predict("data/titanic.test.arff");
         titanic.predictOne("1", 5, "female");
     }
